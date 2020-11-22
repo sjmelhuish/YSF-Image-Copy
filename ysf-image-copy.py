@@ -182,6 +182,7 @@ def load_font():
         'helvetica.ttf',
         'arial.ttf',
         'tahoma.ttf',
+        'roboto.ttf',
         'sans-serif.ttf',
     ]
 
@@ -194,17 +195,22 @@ def load_font():
 
     return ImageFont.load_default()
 
-
-def shrink_image(picpath, saveto, text, colour):
-    print(f'{picpath} -> {saveto}')
-    image = Image.open(picpath)
-    image.thumbnail((320,240))
-    draw = ImageDraw.Draw(image)
+def paint_text(img, text):
+    # Get drawing context
+    draw = ImageDraw.Draw(img)
     font = load_font()
     with_newlines = text.replace('\\','\n')
     c = Color(colour)
     ct = tuple(int(255*v) for v in c.rgb)
     draw.text((0,0), with_newlines,ct,font=font)
+
+
+def shrink_image(picpath, saveto, text, colour):
+    print(f'{picpath} -> {saveto}')
+    image = Image.open(picpath)
+    image.thumbnail((320,240))
+    if text != None:
+        paint_text(image, text)
     image.save(saveto)
 
 def process_pic(file_name, outdir, picnum):
