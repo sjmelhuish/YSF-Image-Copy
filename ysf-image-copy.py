@@ -178,6 +178,7 @@ def write_log(binary_stream, picfile, outdir, picnum, text, colour):
 
 def load_font():
     fonts = [
+        'Amble-Bold.ttf',
         'verdana.ttf',
         'helvetica.ttf',
         'arial.ttf',
