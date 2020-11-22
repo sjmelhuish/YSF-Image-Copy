@@ -51,4 +51,25 @@ Two image sizes are supported:
 Compression quality can be adjusted to size the file for transmission speed.
 The file size limit is 40 kB.
 
+## Usage
+  `ysf-image-copy.py CALLSIGN RADIOID OUTDIR [-d DIRECTORY|-f PICFILE] [-u] [-t TEXT] [-c COLOUR]`
+  
+* `CALLSIGN`            is your call sign
+* `RADIOID`             is the Radio ID to insert (find this under the GM settings on your radio)
+* `OUTDIR`              is the output directory
+  
+| Option | Explanation |
+| :-- | :-- |
+  `-h --help`                          | Show this screen
+  `-v --version`                       | Show version
+  `-d DIRECTORY --dir=DIRECTORY`       | Name the input directory forbatch conversion
+  `-f PICFILE --file=PICFILE`          | Convert a single file
+  `-t TEXT --text=TEXT`                | Write text over image
+  `-c COLOUR --colour=COLOUR`          | Colour for the text
+  `-u`                                 | Update files at outdir instead of starting from scratch
 
+## Licensing
+
+This utility is licensed under the GPL. Please see the included licence file.
+
+The bundled font, Amble-Bold, is licensed under the Apache licence. Please see the included Apache Licence file.
