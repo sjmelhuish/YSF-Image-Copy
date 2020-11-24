@@ -50,10 +50,10 @@ def get_geotagging(exif):
 
     return geotagging
 
-def encodegps(filename):
+def encodegps(exif):
     blank_gps = "                    "
     
-    exif = get_exif(filename)
+    # exif = get_exif(filename)
 
     if exif:
 
@@ -65,7 +65,7 @@ def encodegps(filename):
             # No EXIF GPS data
             return blank_gps
         try:
-            print(f"geotags from {filename}:")
+            print(f"geotags from image:")
             print(f'[{geotags}]')
             print(geotags['GPSLatitude'])
             print(geotags['GPSLongitude'])
@@ -86,10 +86,9 @@ def encodegps(filename):
     return blank_gps
 
 
-def get_date_taken(path):
+def get_date_taken(exif):
     try:
-        exif = Image.open(path)._getexif()
-        if exif is not None:
+        if exif:
             dto_str = exif[36867]
             return datetime.strptime(dto_str, '%Y:%m:%d %H:%M:%S')
         else:
@@ -97,15 +96,6 @@ def get_date_taken(path):
     except KeyError:
         # No EXIF data for datetime
         return datetime.now()
-
-def get_exif(filename):
-    image = Image.open(filename)
-    # image.load()
-    print ("Image file: ", image)
-    if image is None:
-        return None
-    # image.verify()
-    return image.getexif()
 
 def getfilesize(filename):
     b = os.path.getsize(filename)
@@ -138,6 +128,8 @@ def picfilename(radio_id, seq_num):
 
 def write_log(binary_stream, picfile, call_sign, radio_id, outdir, picnum, text, colour):
     print(f'Write log entry for {picfile}')
+    image = Image.open(picfile)
+    exif = image.getexif()
     binary_stream.write(bytes(b'\x00\x00\x00\x00')) # Head
     binary_stream.write(bytes(b'\x20\x20\x20\x20\x20')) # Node ID
     binary_stream.write(bytes('ALL       ', 'ASCII')) # Dest
@@ -148,7 +140,7 @@ def write_log(binary_stream, picfile, call_sign, radio_id, outdir, picnum, text,
     binary_stream.write(bytes(call_sign.ljust(16), 'ASCII')) # Callsign in 16-char field
     writedate(binary_stream, datetime.now() - timedelta(hours = 1))
     writedate(binary_stream, datetime.now())
-    taken = get_date_taken(picfile)
+    taken = get_date_taken(exif)
     writedate(binary_stream, taken)
     binary_stream.write(
         bytes('{:11.11}'.format(os.path.basename(picfile)), 'ASCII')
@@ -157,10 +149,10 @@ def write_log(binary_stream, picfile, call_sign, radio_id, outdir, picnum, text,
     outname = picfilename(radio_id, picnum)
     fulloutname =  os.path.join(outdir, 'PHOTO', outname)
     print(f'Convert {picfile} -> {outname}')
-    shrink_image(picfile,fulloutname, text, colour)
+    shrink_image(image,fulloutname, text, colour)
     binary_stream.write(getfilesize(fulloutname))
     binary_stream.write(bytes(outname, 'ASCII')) # Call sign
-    binary_stream.write(bytes(encodegps(picfile), 'ASCII')) # GPS
+    binary_stream.write(bytes(encodegps(exif), 'ASCII')) # GPS
     binary_stream.write(bytes('        ', 'ASCII')) # 8 spaces
 
 def paint_text(img, text):
@@ -174,25 +166,13 @@ def paint_text(img, text):
     draw.text((0,0), with_newlines,ct,font=font)
 
 
-def shrink_image(picpath, saveto, text, colour):
-    print(f'{picpath} -> {saveto}')
-    image = Image.open(picpath)
+def shrink_image(image, saveto, text, colour):
+    print(f'Write -> {saveto}')
+    # image = Image.open(picpath)
     image.thumbnail((320,240))
     if text != None:
         paint_text(image, text)
     image.save(saveto)
-
-def process_pic(file_name, outdir, picnum):
-    with io.BytesIO() as bs:
-        write_log(bs, file_name, outdir, picnum)
-
-        #print_output(bs, 16)
-
-        #exif = get_exif(photofilename)
-        #print(outdir)
-
-        with open(os.path.join(outdir, 'QSOLOG','QSOPCTDIR.DAT'), 'wb') as f:
-            f.write(bs.getvalue())
 
 def write_fat(logpath, pic_count):
     with open(os.path.join(outdir, 'QSOLOG','QSOPCTFAT.DAT'), 'wb') as f:
