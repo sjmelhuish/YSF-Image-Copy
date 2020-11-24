@@ -29,16 +29,7 @@ from PIL.ExifTags import TAGS, GPSTAGS
 from PIL import ImageFont
 from PIL import ImageDraw 
 from colour import Color
-#from shutil import copyfile # Used to copy jpg. Not if we write it?
-
 from docopt import docopt
-
-# photofilename = r'TestImages/StileNoExif.JPG'
-# exiffilename = r'TestImages/StileExif.JPG'
-outdir = r'TestOut'
-
-radio_id = 'E0Spx'
-callsign = 'G4TJC'
 
 print ("YSF-Image-Copy Running")
 
@@ -59,66 +50,62 @@ def get_geotagging(exif):
 
     return geotagging
 
-# def get_decimal_from_dms(dms, ref):
-
-#     degrees = dms[0][0] / dms[0][1]
-#     minutes = dms[1][0] / dms[1][1] / 60.0
-#     seconds = dms[2][0] / dms[2][1] / 3600.0
-
-#     if ref in ['S', 'W']:
-#         degrees = -degrees
-#         minutes = -minutes
-#         seconds = -seconds
-
-#     return round(degrees + minutes + seconds, 5)
-
-# def get_coordinates(geotags):
-#     lat = get_decimal_from_dms(geotags['GPSLatitude'], geotags['GPSLatitudeRef'])
-
-#     lon = get_decimal_from_dms(geotags['GPSLongitude'], geotags['GPSLongitudeRef'])
-
-#     return (lat,lon)
-
 def encodegps(filename):
+    blank_gps = "                    "
+    
     exif = get_exif(filename)
-    # print(f"exif from {filename}:")
-    # print(exif)
-    try:
-        geotags = get_geotagging(exif)
-    except ValueError:
-        # No EXIF GPS data
-        return "                    "
-    try:
-        print(f"geotags from {filename}:")
-        print(f'[{geotags}]')
-        print(geotags['GPSLatitude'])
-        print(geotags['GPSLongitude'])
-        return '{:1.1}{:03d}{:02d}{:04d}{:1.1}{:03d}{:02d}{:04d}'.format(
-            geotags['GPSLatitudeRef'],
-            int(geotags['GPSLatitude'][0]),
-            int(geotags['GPSLatitude'][1]),
-            int(100*geotags['GPSLatitude'][2]),
-            geotags['GPSLongitudeRef'],
-            int(geotags['GPSLongitude'][0]),
-            int(geotags['GPSLongitude'][1]),
-            int(100*geotags['GPSLongitude'][2]),
-        )
-    except KeyError:
-        # GPS data missing?
-        return "                    "
+
+    if exif:
+
+        # print(f"exif from {filename}:")
+        # print(exif)
+        try:
+            geotags = get_geotagging(exif)
+        except ValueError:
+            # No EXIF GPS data
+            return blank_gps
+        try:
+            print(f"geotags from {filename}:")
+            print(f'[{geotags}]')
+            print(geotags['GPSLatitude'])
+            print(geotags['GPSLongitude'])
+            return '{:1.1}{:03d}{:02d}{:04d}{:1.1}{:03d}{:02d}{:04d}'.format(
+                geotags['GPSLatitudeRef'],
+                int(geotags['GPSLatitude'][0]),
+                int(geotags['GPSLatitude'][1]),
+                int(100*geotags['GPSLatitude'][2]),
+                geotags['GPSLongitudeRef'],
+                int(geotags['GPSLongitude'][0]),
+                int(geotags['GPSLongitude'][1]),
+                int(100*geotags['GPSLongitude'][2]),
+            )
+        except KeyError:
+            # GPS data missing?
+            return blank_gps
+
+    return blank_gps
+
 
 def get_date_taken(path):
     try:
-        dto_str = Image.open(path)._getexif()[36867]
-        return datetime.strptime(dto_str, '%Y:%m:%d %H:%M:%S')
+        exif = Image.open(path)._getexif()
+        if exif is not None:
+            dto_str = exif[36867]
+            return datetime.strptime(dto_str, '%Y:%m:%d %H:%M:%S')
+        else:
+            return datetime.now()
     except KeyError:
         # No EXIF data for datetime
         return datetime.now()
 
 def get_exif(filename):
     image = Image.open(filename)
-    image.verify()
-    return image._getexif()
+    # image.load()
+    print ("Image file: ", image)
+    if image is None:
+        return None
+    # image.verify()
+    return image.getexif()
 
 def getfilesize(filename):
     b = os.path.getsize(filename)
@@ -149,7 +136,7 @@ def picfilename(radio_id, seq_num):
     return "H{:.5}{:06d}.jpg".format(radio_id, seq_num)
 
 
-def write_log(binary_stream, picfile, outdir, picnum, text, colour):
+def write_log(binary_stream, picfile, call_sign, radio_id, outdir, picnum, text, colour):
     print(f'Write log entry for {picfile}')
     binary_stream.write(bytes(b'\x00\x00\x00\x00')) # Head
     binary_stream.write(bytes(b'\x20\x20\x20\x20\x20')) # Node ID
@@ -158,7 +145,7 @@ def write_log(binary_stream, picfile, outdir, picnum, text, colour):
     binary_stream.write(bytes(radio_id, 'ASCII')) # Radio ID
     # binary_stream.write(bytes('G4TJC     ', 'ASCII')) # Call sign
     # binary_stream.write(bytes('      ', 'ASCII')) # 6 spaces
-    binary_stream.write(bytes(callsign.ljust(16), 'ASCII')) # Callsign in 16-char field
+    binary_stream.write(bytes(call_sign.ljust(16), 'ASCII')) # Callsign in 16-char field
     writedate(binary_stream, datetime.now() - timedelta(hours = 1))
     writedate(binary_stream, datetime.now())
     taken = get_date_taken(picfile)
@@ -176,30 +163,11 @@ def write_log(binary_stream, picfile, outdir, picnum, text, colour):
     binary_stream.write(bytes(encodegps(picfile), 'ASCII')) # GPS
     binary_stream.write(bytes('        ', 'ASCII')) # 8 spaces
 
-def load_font():
-    fonts = [
-        'Amble-Bold.ttf',
-        'verdana.ttf',
-        'helvetica.ttf',
-        'arial.ttf',
-        'tahoma.ttf',
-        'roboto.ttf',
-        'sans-serif.ttf',
-    ]
-
-    for font_name in fonts:
-        try:
-            font = ImageFont.truetype(font_name, 48)
-            return font
-        except OSError as e:
-            print("Font problem.", e, font_name)
-
-    return ImageFont.load_default()
-
 def paint_text(img, text):
     # Get drawing context
     draw = ImageDraw.Draw(img)
-    font = load_font()
+    # Amble-Bold will be included in distribution
+    font = ImageFont.truetype('Amble-Bold.ttf', 48)
     with_newlines = text.replace('\\','\n')
     c = Color(colour)
     ct = tuple(int(255*v) for v in c.rgb)
@@ -226,6 +194,20 @@ def process_pic(file_name, outdir, picnum):
         with open(os.path.join(outdir, 'QSOLOG','QSOPCTDIR.DAT'), 'wb') as f:
             f.write(bs.getvalue())
 
+def write_fat(logpath, pic_count):
+    with open(os.path.join(outdir, 'QSOLOG','QSOPCTFAT.DAT'), 'wb') as f:
+        for pnum in range(pic_count):
+            f.write(bytes(b'\x40'))
+            addr = 0X80 * pnum
+            f.write(addr.to_bytes(3, byteorder='big', signed=False))
+
+def write_mng(logpath, msg_count, pic_count, grp_count):
+    with open(os.path.join(outdir, 'QSOLOG','QSOMNG.DAT'), 'wb') as f:
+        f.write(msg_count.to_bytes(2, byteorder='big', signed=False))
+        f.write(bytes(b'\xff' * 14)) # Padding
+        f.write(pic_count.to_bytes(2, byteorder='big', signed=False))
+        f.write(grp_count.to_bytes(2, byteorder='big', signed=False))
+        f.write(bytes(b'\xff' * 12)) # Padding
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='YSF Image Copy 0.0')
@@ -235,6 +217,9 @@ if __name__ == '__main__':
     dir_name = arguments['--dir']
     text = arguments['--text']
     colour = arguments['--colour']
+    outdir = arguments['OUTDIR']
+    radioid = arguments['RADIOID']
+    callsign = arguments['CALLSIGN']
 
     if colour == None:
         colour = 'red' 
@@ -243,25 +228,20 @@ if __name__ == '__main__':
 
     with io.BytesIO() as bs:
         if file_name is not None:
-            write_log(bs, file_name, outdir, next_pic_num, text, colour)
+            write_log(bs, file_name, callsign, radioid, outdir, next_pic_num, text, colour)
             next_pic_num += 1
 
         if dir_name is not None:
             for filename in os.listdir(dir_name):
                 try:
                     fullfname = os.path.join(dir_name, filename)
-                    write_log(bs, fullfname, outdir, next_pic_num, text, colour)
+                    write_log(bs, fullfname, callsign, radioid, outdir, next_pic_num, text, colour)
                     next_pic_num += 1
                 except IOError as e:
                     print("cannot convert", filename, e)
 
         with open(os.path.join(outdir, 'QSOLOG','QSOPCTDIR.DAT'), 'wb') as f:
             f.write(bs.getvalue())
-            
-    with open(os.path.join(outdir, 'QSOLOG','QSOPCTFAT.DAT'), 'wb') as f:
-        for pnum in range(next_pic_num):
-            f.write(bytes(b'\x40'))
-            addr = 0X80 * pnum
-            f.write(addr.to_bytes(3, byteorder='big', signed=False))
 
-    # copyfile(photofilename, os.path.join(outdir, 'PHOTO', outname))
+    write_fat(outdir, next_pic_num)
+    write_mng(outdir, 0, next_pic_num, 0)
