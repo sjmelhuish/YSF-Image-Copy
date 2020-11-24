@@ -146,7 +146,11 @@ def write_log(binary_stream, picfile, call_sign, radio_id, outdir, picnum, text,
     ) # Description
     binary_stream.write(bytes('     ', 'ASCII')) # 5 spaces
     outname = picfilename(radio_id, picnum)
-    fulloutname =  os.path.join(outdir, 'PHOTO', outname)
+    # Ensure the PHOTO directory exists
+    photodir = os.path.join(outdir, 'PHOTO')
+    if not os.path.exists(photodir):
+        os.makedirs(photodir)
+    fulloutname =  os.path.join(photodir, outname)
     print(f'Convert {picfile} -> {outname}')
     shrink_image(image,fulloutname, text, colour)
     binary_stream.write(getfilesize(fulloutname))
@@ -210,24 +214,30 @@ if __name__ == '__main__':
     if colour == None:
         colour = 'red' 
 
-    next_pic_num = 1
+    pic_count = 0
 
     with io.BytesIO() as bs:
-        if file_name is not None:
-            write_log(bs, file_name, callsign, radioid, outdir, next_pic_num, text, colour)
-            next_pic_num += 1
+        if file_name:
+            write_log(bs, file_name, callsign, radioid, outdir, pic_count+1, text, colour)
+            pic_count += 1
 
-        if dir_name is not None:
+        if dir_name:
             for filename in os.listdir(dir_name):
                 try:
                     fullfname = os.path.join(dir_name, filename)
-                    write_log(bs, fullfname, callsign, radioid, outdir, next_pic_num, text, colour)
-                    next_pic_num += 1
+                    write_log(bs, fullfname, callsign, radioid, outdir, pic_count+1, text, colour)
+                    pic_count += 1
                 except IOError as e:
                     print("cannot convert", filename, e)
 
-        with open(os.path.join(outdir, 'QSOLOG','QSOPCTDIR.DAT'), 'wb') as f:
-            f.write(bs.getvalue())
+        if pic_count > 0:
+            # At least one picture written
+            # Ensure the QSOLOG directory exists
+            logdir = os.path.join(outdir, 'QSOLOG')
+            if not os.path.exists(logdir):
+                os.makedirs(logdir)
+            with open(os.path.join(logdir,'QSOPCTDIR.DAT'), 'wb') as f:
+                f.write(bs.getvalue())
 
-    write_fat(outdir, next_pic_num)
-    write_mng(outdir, 0, next_pic_num, 0)
+            write_fat(outdir, pic_count)
+            write_mng(outdir, 0, pic_count, 0)
