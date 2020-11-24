@@ -135,8 +135,6 @@ def write_log(binary_stream, picfile, call_sign, radio_id, outdir, picnum, text,
     binary_stream.write(bytes('ALL       ', 'ASCII')) # Dest
     binary_stream.write(bytes('      ', 'ASCII')) # 6 spaces
     binary_stream.write(bytes(radio_id, 'ASCII')) # Radio ID
-    # binary_stream.write(bytes('G4TJC     ', 'ASCII')) # Call sign
-    # binary_stream.write(bytes('      ', 'ASCII')) # 6 spaces
     binary_stream.write(bytes(call_sign.ljust(16), 'ASCII')) # Callsign in 16-char field
     writedate(binary_stream, datetime.now() - timedelta(hours = 1))
     writedate(binary_stream, datetime.now())
@@ -151,7 +149,7 @@ def write_log(binary_stream, picfile, call_sign, radio_id, outdir, picnum, text,
     print(f'Convert {picfile} -> {outname}')
     shrink_image(image,fulloutname, text, colour)
     binary_stream.write(getfilesize(fulloutname))
-    binary_stream.write(bytes(outname, 'ASCII')) # Call sign
+    binary_stream.write(bytes(outname, 'ASCII')) # Filename
     binary_stream.write(bytes(encodegps(exif), 'ASCII')) # GPS
     binary_stream.write(bytes('        ', 'ASCII')) # 8 spaces
 
@@ -163,7 +161,7 @@ def paint_text(img, text):
     with_newlines = text.replace('\\','\n')
     c = Color(colour)
     ct = tuple(int(255*v) for v in c.rgb)
-    draw.text((0,0), with_newlines,ct,font=font)
+    draw.text((5,5), with_newlines,ct,font=font)
 
 
 def shrink_image(image, saveto, text, colour):
