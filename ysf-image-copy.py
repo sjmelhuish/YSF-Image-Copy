@@ -24,6 +24,7 @@ import io
 import binascii
 from datetime import datetime, timedelta
 import os
+import sys
 from PIL import Image, ExifTags
 from PIL.ExifTags import TAGS, GPSTAGS
 from PIL import ImageFont
@@ -157,7 +158,11 @@ def paint_text(img, text):
     # Get drawing context
     draw = ImageDraw.Draw(img)
     # Amble-Bold will be included in distribution
-    font = ImageFont.truetype('Amble-Bold.ttf', 48)
+    try:
+        font = ImageFont.truetype('Amble-Bold.ttf', 48)
+    except OSError:
+        font = ImageFont.truetype(
+            os.path.join(get_script_path(),'Amble-Bold.ttf'), 48)
     with_newlines = text.replace('\\','\n')
     c = Color(colour)
     ct = tuple(int(255*v) for v in c.rgb)
@@ -187,6 +192,9 @@ def write_mng(logpath, msg_count, pic_count, grp_count):
         f.write(grp_count.to_bytes(2, byteorder='big', signed=False))
         f.write(bytes(b'\xff' * 12)) # Padding
 
+def get_script_path():
+    return os.path.dirname(os.path.realpath(sys.argv[0]))
+    
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='YSF Image Copy 0.0')
     print(arguments)
