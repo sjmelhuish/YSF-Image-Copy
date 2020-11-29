@@ -35,6 +35,18 @@ from docopt import docopt
 print ("YSF-Image-Copy Running")
 
 def get_geotagging(exif):
+    """Retrieve GPS tags from EXIF
+
+    Args:
+        exif (object): EXIF object
+
+    Raises:
+        ValueError: if no EXIF data found
+        ValueError: if no EXIF geotagging data found
+
+    Returns:
+        dict: Dictionary of EXIF tags
+    """
 
     if not exif:
         raise ValueError("No EXIF metadata found")
@@ -52,6 +64,14 @@ def get_geotagging(exif):
     return geotagging
 
 def encodegps(exif):
+    """Take GPS values from EXIF and encode to YSF string
+
+    Args:
+        exif (object): EXIF object
+
+    Returns:
+        str: String in format for QSOMSGDIR.DAT
+    """
     blank_gps = "                    "
     
     # exif = get_exif(filename)
@@ -88,6 +108,14 @@ def encodegps(exif):
 
 
 def get_date_taken(exif):
+    """Get picture taken time or now()
+
+    Args:
+        exif (object): EXIF object
+
+    Returns:
+        datetime: The datetime object
+    """
     try:
         if exif:
             dto_str = exif[36867]
@@ -99,14 +127,36 @@ def get_date_taken(exif):
         return datetime.now()
 
 def getfilesize(filename):
+    """Get file size as bytes
+
+    Args:
+        filename (str): The full pathname of a file
+
+    Returns:
+        bytes: 4-byte field giving file size
+    """
     b = os.path.getsize(filename)
     return b.to_bytes(4, byteorder='big', signed=False)
 
 def dec2hex(val):
+    """Convert a number such that it reads like decimal when displayed as hex.
+
+    Args:
+        val (int): The number
+
+    Returns:
+        int: The number encoded to hex
+    """
     v = val%100
     return v%10 + 16*(v//10)
 
 def writedate(binary_stream, when):
+    """Write a date to a BytesIO binary stream
+
+    Args:
+        binary_stream (object): BytesIO stream
+        when (datatime): The date time object to write
+    """
 
     t = when.timetuple()
     for z in t[:6]:
@@ -124,10 +174,34 @@ def print_output(binary_stream, chunksize):
         print("{:04x}".format(addr), " ".join(["{:02x}".format(x) for x in d]))
 
 def picfilename(radio_id, seq_num):
+    """Generate picture file name
+
+    Args:
+        radio_id (str): Radio ID to embed
+        seq_num (int): Picture number in sequence from 1
+
+    Returns:
+        str: Picture file name
+    """
     return "H{:.5}{:06d}.jpg".format(radio_id, seq_num)
 
 
 def write_log(binary_stream, picfile, call_sign, radio_id, outdir, picnum, text, colour):
+    """Write an entry for QSOMSGLOG.DAT
+
+    This writes a single entry to the binary stream, which will ultimately be
+    written out to QSOMSGLOG.DAT
+
+    Args:
+        binary_stream (object): BytesIO buffer to which entries are
+        picfile (str): File location of input picture file
+        call_sign (str): Call sign to embed
+        radio_id (str): Radio ID to embed
+        outdir (str): Output directory location
+        picnum (int): Picture number in sequence, from 1
+        text (str): Text to write over the picture or None
+        colour (str): String describing the colour for the text
+    """
     print(f'Write log entry for {picfile}')
     image = Image.open(picfile)
     exif = image.getexif()
@@ -158,7 +232,18 @@ def write_log(binary_stream, picfile, call_sign, radio_id, outdir, picnum, text,
     binary_stream.write(bytes(encodegps(exif), 'ASCII')) # GPS
     binary_stream.write(bytes('        ', 'ASCII')) # 8 spaces
 
-def paint_text(img, text):
+def paint_text(img, text, tcolour):
+    """Taking a PIL image object write some text over it.
+
+    Any '\' characters are replaced by newline.
+
+    The text colour is interpretted using the Colour module.
+
+    Args:
+        img (PIL object): The image to draw over
+        text (str): The text to draw
+        tcolour (str): A string describing the colour
+    """
     # Get drawing context
     draw = ImageDraw.Draw(img)
     # Amble-Bold will be included in distribution
@@ -168,20 +253,36 @@ def paint_text(img, text):
         font = ImageFont.truetype(
             os.path.join(get_script_path(),'Amble-Bold.ttf'), 48)
     with_newlines = text.replace('\\','\n')
-    c = Color(colour)
+    c = Color(tcolour)
     ct = tuple(int(255*v) for v in c.rgb)
     draw.text((5,5), with_newlines,ct,font=font)
 
 
 def shrink_image(image, saveto, text, colour):
+    """Shrink the image to a 320x240 thumbnail and save to file.
+
+    Args:
+        image (PIL image): The original image object
+        saveto (str): The location for saving the image
+        text (str): A string to write over the image or None
+        colour (str): A string describing the colour to use for the text
+    """
     print(f'Write -> {saveto}')
-    # image = Image.open(picpath)
     image.thumbnail((320,240))
     if text != None:
-        paint_text(image, text)
+        paint_text(image, text, colour)
     image.save(saveto)
 
 def write_fat(logpath, pic_count):
+    """Write the QSOPCTFAT.DAT file.
+
+    This file stores lengths and address offsets into the QSOMSGDIR.DAT file
+    for the location of each picture. 
+
+    Args:
+        logpath (str): Path to the directory for writing QSOPCTFAT.DAT
+        pic_count (int): The number of pictures
+    """
     with open(os.path.join(outdir, 'QSOLOG','QSOPCTFAT.DAT'), 'wb') as f:
         for pnum in range(pic_count):
             f.write(bytes(b'\x40'))
@@ -189,6 +290,16 @@ def write_fat(logpath, pic_count):
             f.write(addr.to_bytes(3, byteorder='big', signed=False))
 
 def write_mng(logpath, msg_count, pic_count, grp_count):
+    """Write the QSOMNG.DAT file.
+
+    This file tracks the numbers of messages, photos and GM groups stored.
+
+    Args:
+        logpath (str): Path to the directory for writing QSOMNG.DAT
+        msg_count (int): The number of messages
+        pic_count (int): The number of pictures
+        grp_count (int): The number of groups
+    """
     with open(os.path.join(outdir, 'QSOLOG','QSOMNG.DAT'), 'wb') as f:
         f.write(msg_count.to_bytes(2, byteorder='big', signed=False))
         f.write(bytes(b'\xff' * 14)) # Padding
@@ -197,6 +308,11 @@ def write_mng(logpath, msg_count, pic_count, grp_count):
         f.write(bytes(b'\xff' * 12)) # Padding
 
 def get_script_path():
+    """Get the script path
+
+    Returns:
+        str: The script path
+    """
     return os.path.dirname(os.path.realpath(sys.argv[0]))
     
 if __name__ == '__main__':
