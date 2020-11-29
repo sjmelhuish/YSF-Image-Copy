@@ -47,16 +47,33 @@ Please refer to the following studies:
 
 ## Image Sizes
 
-Two image sizes are supported:
+Two image sizes are supported are supported by Yaesu:
 
-* 160 &times; 120
+* 160 &times; 120 (not yet supported by this program)
 * 320 &times; 240
 
 Compression quality can be adjusted to size the file for transmission speed.
 The file size limit is 40 kB.
 
+## Installation
+
+The program is a Python script. As such it requires a Python installation.
+I suggest [Anaconda](https://www.anaconda.com/products/individual "Anaconda Python - individual edition") as the most convenient source.
+
+A few extra Python modules are required. These may be installed using `pip`.
+If you have Anaconda use Anaconda Navigator or `conda` from the command line.
+
+Required modules:
+
+* [pillow](https://pillow.readthedocs.io/en/stable/ "Pillow - fork of PIL, Python Image Library")
+* [colour](https://pypi.org/project/colour/ "Colour - Converts and manipulates common color representation")
+* [docopt](http://docopt.org/ "Docopt - Command-line interface description language")
+
 ## Usage
-  `ysf-image-copy.py CALLSIGN RADIOID OUTDIR [-d DIRECTORY|-f PICFILE] [-u] [-t TEXT] [-c COLOUR]`
+
+This program is run from the command line.
+
+  `python ysf-image-copy.py CALLSIGN RADIOID OUTDIR [-d DIRECTORY|-f PICFILE] [-u] [-t TEXT] [-c COLOUR]`
   
 * `CALLSIGN`            is your call sign
 * `RADIOID`             is the Radio ID to insert (find this under the GM settings on your radio)
@@ -72,7 +89,15 @@ The file size limit is 40 kB.
   `-c COLOUR --colour=COLOUR`          | Colour for the text
   `-u`                                 | Update files at outdir instead of starting from scratch
 
-The `-u` option is not yet supported.
+The `-u` option is not yet supported. Arguments are shown in square brackets if they are optional
+(don't enter the brackets).
+
+## Running on a Phone
+
+The program has been run under Android using [Pydroid](https://play.google.com/store/apps/details?id=ru.iiec.pydroid3&hl=en_GB&gl=US "Pydroid on Google Play"). 
+You can install the necessary extra modules under Pydroid using `pip`.
+Pydroid may not have permission to write directly to a &mu;SD card reader, but you should be able to
+use a file-management app to work around this.
 
 ## Licensing
 
