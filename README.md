@@ -68,6 +68,8 @@ The file size limit is 40 kB.
   `-c COLOUR --colour=COLOUR`          | Colour for the text
   `-u`                                 | Update files at outdir instead of starting from scratch
 
+The `-u` option is not yet supported.
+
 ## Licensing
 
 This utility is licensed under the GPL. Please see the included licence file.
